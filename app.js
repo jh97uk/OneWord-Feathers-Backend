@@ -30,7 +30,7 @@ class MessageService{
 class GameSessionService{
     constructor(){
         this.games = {};
-        this.events = ['joined']
+        this.events = ['joined', 'left']
     }
 
     async find(){
@@ -74,8 +74,9 @@ class GameSessionService{
         const self = this;
         Object.keys(data.playersInSessionIds).forEach(function(key, object){
             if(data.playersInSessionIds[key] == null){
-                console.log("leave");
+                console.log(self.games[id]);
                 app.channel(id).leave(params.connection);
+                self.emit('left', {id:id, leftPlayer:key});
             } else if(!self.games[id].playersInSessionIds[key]){
                 console.log("rest");
                 self.emit('joined', {id:id, newPlayer:key});
@@ -127,3 +128,8 @@ app.service('sessions').publish('joined', function(data, context){
     console.log("test");
     return app.channel(data.id).send(data)
 });
+
+app.service('sessions').publish('left', function(data, context){
+    console.log("player has left the game");
+    return app.channel(data.id).send(data);
+})
