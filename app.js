@@ -1,6 +1,7 @@
 const feathers = require('@feathersjs/feathers');
 const express = require('@feathersjs/express');
 const socketio = require('@feathersjs/socketio');
+const {NotFound, GeneralError, BadRequest} = require('@feathersjs/errors');
 const {nanoid} = require('nanoid');
 const _ = require('lodash');
 
@@ -38,6 +39,9 @@ class GameSessionService{
     }
 
     async get(id, context){
+        if(!this.games[id]){
+            return new NotFound("This game doesn't exist!")
+        }
         return Promise.resolve(this.games[id]);
     }
 
@@ -61,10 +65,8 @@ class GameSessionService{
     }
 
     async update(id, data, params){
-        console.log(data);
         this.games[id.game].playersInSessionIds[id.player] = data;
     
-        console.log("what the fucking fucker.")
         if(params.connection != null){
             app.channel(id.game).join(params.connection);
         }
@@ -72,21 +74,24 @@ class GameSessionService{
     }
     async patch(id, data, params){
         const self = this;
-        Object.keys(data.playersInSessionIds).forEach(function(key, object){
-            if(data.playersInSessionIds[key] == null){
-                console.log(self.games[id]);
-                app.channel(id).leave(params.connection);
-                self.emit('left', {id:id, leftPlayer:key});
-            } else if(!self.games[id].playersInSessionIds[key]){
-                console.log("rest");
-                self.emit('joined', {id:id, newPlayer:key});
-                if(params.connection != null){
-                    app.channel(id).join(params.connection);
-                }
-                return;
-            } 
-        });
-
+        if(!this.games[id]){
+            return new NotFound("This game doesn't exist!")
+        }
+        if(data.playersInSessionIds){
+            Object.keys(data.playersInSessionIds).forEach(function(key, object){
+                if(data.playersInSessionIds[key] == null){
+                    app.channel(id).leave(params.connection);
+                    self.emit('left', {id:id, leftPlayer:key});
+                } else if(!self.games[id].playersInSessionIds[key]){
+                    self.emit('joined', {id:id, newPlayer:key});
+                    if(params.connection != null){
+                        app.channel(id).join(params.connection);
+                    }
+                    return;
+                } 
+            });
+        }
+        
         this.games[id] = _.merge(this.games[id], data)
     
         return Promise.resolve(this.games[id]);
@@ -125,11 +130,9 @@ app.service('sessions').publish('patched', function(data, context){
 })
 
 app.service('sessions').publish('joined', function(data, context){
-    console.log("test");
     return app.channel(data.id).send(data)
 });
 
 app.service('sessions').publish('left', function(data, context){
-    console.log("player has left the game");
     return app.channel(data.id).send(data);
 })
