@@ -4,7 +4,8 @@ const socketio = require('@feathersjs/socketio');
 const {NotFound, GeneralError, BadRequest} = require('@feathersjs/errors');
 const {nanoid} = require('nanoid');
 const _ = require('lodash');
-
+const Joi = require('@hapi/joi');
+const Schema = require('./schema');
 const app = express(feathers());
 
 class MessageService{
@@ -17,6 +18,9 @@ class MessageService{
     }
 
     async create(data, context){
+        if(!app.services.sessions.games[data.storyId]){
+            return new NotFound("This game doesn't exist!")
+        }
         const message = {
             id: this.messages.length,
             text: data.text.split(' ')[0],
@@ -74,9 +78,7 @@ class GameSessionService{
     }
     async patch(id, data, params){
         const self = this;
-        if(!this.games[id]){
-            return new NotFound("This game doesn't exist!")
-        }
+        
         if(data.playersInSessionIds){
             Object.keys(data.playersInSessionIds).forEach(function(key, object){
                 if(data.playersInSessionIds[key] == null){
@@ -135,4 +137,46 @@ app.service('sessions').publish('joined', function(data, context){
 
 app.service('sessions').publish('left', function(data, context){
     return app.channel(data.id).send(data);
+})
+
+
+app.service('messages').hooks({
+    before:{
+        create:[
+            context => {
+                var validation = Schema.word.validate(context.data);
+                if(validation.error){
+                    throw new Error(validation.error.message)
+                }
+            }
+        ]
+    }
+})
+
+app.service('sessions').hooks({
+    before:{
+        get:[
+            context=>{
+                if(!app.services.sessions.games[context.id]){
+                    throw new NotFound("This story doesn't exist!")
+                }
+            }
+        ],
+        create:[
+            context=>{
+                var validation = Schema.session.with('storyTitle', 'linkOnly').validate(context.data);
+                if(validation.error){
+                    throw new Error(validation.error.message)
+                }
+            }
+        ],
+        patch:[
+            context=>{
+                var validation = Schema.session.validate(context.data);
+                if(validation.error){
+                    throw new Error(validation.error.message)
+                }
+            }
+        ]
+    }
 })
