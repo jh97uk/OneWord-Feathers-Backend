@@ -2,21 +2,21 @@ const Joi = require('@hapi/joi');
 
 const validate = {
     word: Joi.object({
-        text: Joi.string().min(1).max(100).required(),
-        storyId: Joi.string().required(),
-        userId: Joi.string().min(3).max(50).required(),
+        text: Joi.string().min(1).max(100).required().label('Word'),
+        storyId: Joi.string().min(3).max(50).required().label('Story ID'),
+        userId: Joi.string().min(3).max(50).required().label('Session owner ID'),
     }),
     
     session: Joi.object({
-        id: Joi.any().disallow(Joi.any()),
+        id: Joi.string().min(3).max(50).label('Story ID'),
         storyTitle: Joi.string().min(2).max(120).alphanum().label('Story title'),
-        sessionOwnerId: Joi.any().disallow(Joi.any()),
-        linkOnly: Joi.bool().default(false).label("Link only"),
+        sessionOwnerId: Joi.string().min(3).max(50).label('Session owner ID'),
+        linkOnly: Joi.bool().default(false).label("Link only status"),
         playersInSessionIds: Joi.object().pattern(Joi.string(), Joi.alternatives().try(
             Joi.object({
                 typing: Joi.bool()
             }).label("Player"), 
-            Joi.any().valid(null).label("Player")))
+            Joi.any().valid(null).label("Player"))).label('Players in session')
     })
 }
 
