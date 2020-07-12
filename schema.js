@@ -12,7 +12,11 @@ const validate = {
         storyTitle: Joi.string().min(2).max(120).alphanum().label('Story title'),
         sessionOwnerId: Joi.any().disallow(Joi.any()),
         linkOnly: Joi.bool().default(false).label("Link only"),
-        playersInSessionIds: Joi.object().keys().unknown(true).pattern('/./', Joi.boolean()),
+        playersInSessionIds: Joi.object().pattern(Joi.string(), Joi.alternatives().try(
+            Joi.object({
+                typing: Joi.bool()
+            }).label("Player"), 
+            Joi.any().valid(null).label("Player")))
     })
 }
 

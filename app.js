@@ -172,6 +172,7 @@ app.service('sessions').hooks({
         ],
         patch:[
             context=>{
+                console.log(context);
                 var validation = Schema.session.validate(context.data);
                 if(validation.error){
                     throw new Error(validation.error.message)
