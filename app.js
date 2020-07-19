@@ -1,3 +1,4 @@
+const configuration = require('@feathersjs/configuration');
 const feathers = require('@feathersjs/feathers');
 const express = require('@feathersjs/express');
 const socketio = require('@feathersjs/socketio');
@@ -7,6 +8,30 @@ const _ = require('lodash');
 const Joi = require('@hapi/joi');
 const Schema = require('./schema');
 const app = express(feathers());
+
+class UserService{
+    constructor(){
+        this.users = {}
+        this.connectionsUserIds = {};
+    }
+
+    async find(){
+        return this.users;
+    }
+    async get(id, context){
+    }
+    async create(data, context){
+        const playerId = nanoid(5) 
+        const user = {
+            name:data.name,
+            currentGame:null
+        }
+        app.channel(context.connectionID).join(context.connection);
+        this.users[playerId] = {...user, ...{socketID:context.connectionID}};
+        this.connectionsUserIds[context.connectionID] = playerId;
+        return Promise.resolve({...user, ...{id:playerId}});
+    }
+}
 
 class MessageService{
     constructor(){
@@ -20,7 +45,10 @@ class MessageService{
     async create(data, context){
         if(!app.services.sessions.games[data.storyId]){
             return new NotFound("This game doesn't exist!")
+        } else if(!data.userId in app.services.sessions.games[data.storyId].playersInSessionIds){
+            return new NotFound("User not found in game");
         }
+
         const message = {
             id: this.messages.length,
             text: data.text.split(' ')[0],
@@ -59,6 +87,7 @@ class GameSessionService{
             linkOnly:data.linkOnly,
             playersInSessionIds:this.playersInSessionIds
         }
+
         this.games[game.id] = game;
 
         if(context.connection != null){
@@ -72,9 +101,7 @@ class GameSessionService{
         this.games[id.game].playersInSessionIds[id.player] = data;
     
         if(params.connection != null){
-            app.channel(id.game).join(params.connection);
-        }
-        return Promise.resolve(this.games[id.game]);
+            app.channel(id.game).join(params.connection);key
     }
     async patch(id, data, params){
         const self = this;
@@ -83,13 +110,14 @@ class GameSessionService{
             Object.keys(data.playersInSessionIds).forEach(function(key, object){
                 if(data.playersInSessionIds[key] == null){
                     app.channel(id).leave(params.connection);
-                    self.emit('left', {id:id, leftPlayer:key});
+                    self.emit('left', {id:id, leftPlayer:app.services.users.users[key].name});
                 } else if(!self.games[id].playersInSessionIds[key]){
-                    self.emit('joined', {id:id, newPlayer:key});
+                    self.emit('joined', {id:id, newPlayer:app.services.users.users[key].name});
                     if(params.connection != null){
                         app.channel(id).join(params.connection);
+                        app.services.users.users[key].currentGame = id
                     }
-                    return;
+                    return Promise.resolve(this.games[id]);
                 } 
             });
         }
@@ -104,22 +132,27 @@ app.use(express.json());
 app.use(express.urlencoded({extended:true}));
 app.use(express.static(__dirname));
 app.configure(express.rest());
-app.configure(socketio());
+app.configure(socketio(io => {
+    io.use((socket, next)=>{
+        socket.feathers.connectionID = socket.client.id;
+        next();
+    })
+}));
 
 app.use('/messages', new MessageService());
 app.use('/sessions', new GameSessionService());
+app.use('/users', new UserService());
 
 app.use(express.errorHandler());
-app.on('connection', function(connection){
-});
+
 
 app.listen(3030).on('listening', ()=>console.log('Feathers listening'));
 
-app.service('messages').create({text:'trest'})
-app.service('sessions').create({id:nanoid(10), storyName:'Theresas rampage', sessionOwnerId:'asdjoqwij', linkOnly:true, playersInSessionIds:[this.sessionOwnerId]});
+app.service('users').publish('created', function(data, context){
+    return app.channel(context.params.connectionID).send(data);
+})
 
-app.service('messages').publish('created', function(data, context)
-{
+app.service('messages').publish('created', function(data, context){
     return app.channel(data.storyId).send(data);
 });
 
@@ -138,7 +171,6 @@ app.service('sessions').publish('joined', function(data, context){
 app.service('sessions').publish('left', function(data, context){
     return app.channel(data.id).send(data);
 })
-
 
 app.service('messages').hooks({
     before:{
@@ -172,12 +204,34 @@ app.service('sessions').hooks({
         ],
         patch:[
             context=>{
-                console.log(context);
+                console.log("patch!")
                 var validation = Schema.session.validate(context.data);
                 if(validation.error){
                     throw new Error(validation.error.message)
+                }
+                const playerId = Object.keys(context.data.playersInSessionIds)[0];
+                if(app.services.users.users[playerId] != null){
+                    console.log(context.params.connectionID);
+                    if(context.params.connectionID != undefined){
+                        if(app.services.users.users[playerId].socketID != context.params.connectionID){
+                            throw new Error("You are not that user!");
+                        }
+                    }
                 }
             }
         ]
     }
 })
+
+app.on('disconnect', function(connection){
+    const disconnectedUserId = app.services.users.connectionsUserIds[connection.connectionID];
+    const disconnectedUser = app.services.users.users[disconnectedUserId];
+    if(disconnectedUser == undefined || disconnectedUser.currentGame == null)
+        return;
+    const playersInSessionIds = {}
+    playersInSessionIds[disconnectedUserId] = null;
+    app.service('sessions').patch(disconnectedUser.currentGame, {playersInSessionIds:playersInSessionIds}).then(function(){
+        delete disconnectedUser;
+        delete app.services.users.connectionsUserIds[connection.connectionID];
+    })
+});

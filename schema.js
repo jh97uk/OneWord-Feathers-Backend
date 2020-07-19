@@ -15,8 +15,8 @@ const validate = {
         playersInSessionIds: Joi.object().pattern(Joi.string(), Joi.alternatives().try(
             Joi.object({
                 typing: Joi.bool()
-            }).label("Player"), 
-            Joi.any().valid(null).label("Player"))).label('Players in session')
+            }).label("Player").max(1), 
+            Joi.any().valid(null).label("Player"))).label('Players in session').max(1)
     })
 }
 
