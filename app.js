@@ -100,8 +100,8 @@ class GameSessionService{
     async update(id, data, params){
         this.games[id.game].playersInSessionIds[id.player] = data;
     
-        if(params.connection != null){
-            app.channel(id.game).join(params.connection);key
+        if(params.connection != null)
+            app.channel(id.game).join(params.connection);
     }
     async patch(id, data, params){
         const self = this;
@@ -112,12 +112,12 @@ class GameSessionService{
                     app.channel(id).leave(params.connection);
                     self.emit('left', {id:id, leftPlayer:app.services.users.users[key].name});
                 } else if(!self.games[id].playersInSessionIds[key]){
-                    self.emit('joined', {id:id, newPlayer:app.services.users.users[key].name});
+                    self.emit('joined', {id:id, newPlayer:app.services.users.users[key].name, userId:key});
                     if(params.connection != null){
                         app.channel(id).join(params.connection);
-                        app.services.users.users[key].currentGame = id
+                        app.services.users.users[key].currentGame = id;
                     }
-                    return Promise.resolve(this.games[id]);
+                    return Promise.resolve(self.games[id]);
                 } 
             });
         }
@@ -204,14 +204,12 @@ app.service('sessions').hooks({
         ],
         patch:[
             context=>{
-                console.log("patch!")
                 var validation = Schema.session.validate(context.data);
                 if(validation.error){
                     throw new Error(validation.error.message)
                 }
                 const playerId = Object.keys(context.data.playersInSessionIds)[0];
                 if(app.services.users.users[playerId] != null){
-                    console.log(context.params.connectionID);
                     if(context.params.connectionID != undefined){
                         if(app.services.users.users[playerId].socketID != context.params.connectionID){
                             throw new Error("You are not that user!");
@@ -226,12 +224,17 @@ app.service('sessions').hooks({
 app.on('disconnect', function(connection){
     const disconnectedUserId = app.services.users.connectionsUserIds[connection.connectionID];
     const disconnectedUser = app.services.users.users[disconnectedUserId];
-    if(disconnectedUser == undefined || disconnectedUser.currentGame == null)
+    if(disconnectedUser == undefined){
         return;
+    } else if(disconnectedUser.currentGame == null){
+        delete app.services.users.users[disconnectedUserId];
+        delete app.services.users.connectionsUserIds[connection.connectionID];
+        return;
+    }
     const playersInSessionIds = {}
     playersInSessionIds[disconnectedUserId] = null;
     app.service('sessions').patch(disconnectedUser.currentGame, {playersInSessionIds:playersInSessionIds}).then(function(){
-        delete disconnectedUser;
+        delete app.services.users.users[disconnectedUserId];
         delete app.services.users.connectionsUserIds[connection.connectionID];
     })
 });
