@@ -33,6 +33,24 @@ class UserService{
     }
 }
 
+class GameFinderService{
+    constructor(){
+        this.publicGameIds = [];
+    }
+
+    async find(){
+        return this.publicGameIds;
+    }
+
+    async get(id, context){
+        if(id == ''){
+            if(this.publicGameIds.length < 1)
+                return new NotFound("There are no public games available at this time.");
+            return Promise.resolve(this.publicGameIds[Math.floor(Math.random()*this.publicGameIds.length)]);
+        }
+    }
+}
+
 class MessageService{
     constructor(){
         this.messages = [];
@@ -63,14 +81,19 @@ class MessageService{
 class GameSessionService{
     constructor(){
         this.games = {};
+        this.publicGameIds = [];
         this.events = ['joined', 'left']
     }
 
-    async find(){
-        return this.games;
+    async find(){  
+        if(this.publicGameIds.length < 1){
+            return Promise.resolve(new NotFound("There's no public games available at this time."));
+        } else{
+            return {id:this.publicGameIds[Math.floor(Math.random()*this.publicGameIds.length)]};
+        }
     }
 
-    async get(id, context){
+    async get(id, context){        
         if(!this.games[id]){
             return new NotFound("This game doesn't exist!")
         }
@@ -89,6 +112,9 @@ class GameSessionService{
         }
 
         this.games[game.id] = game;
+        if(!data.linkOnly){
+            this.publicGameIds.push(game.id);
+        }
 
         if(context.connection != null){
             app.channel(game.id).join(context.connection);
@@ -117,13 +143,13 @@ class GameSessionService{
                         app.channel(id).join(params.connection);
                         app.services.users.users[key].currentGame = id;
                     }
-                    return Promise.resolve(self.games[id]);
                 } 
             });
         }
         
         this.games[id] = _.merge(this.games[id], data)
-    
+        if(app.services.sessions.games[id].linkOnly == false && Object.keys(app.services.sessions.games[id].playersInSessionIds).length == 4)
+            app.services.sessions.publicGameIds.splice(app.services.sessions.publicGameIds.indexOf(id), 1);
         return Promise.resolve(this.games[id]);
     }
 }
@@ -139,8 +165,16 @@ app.configure(socketio(io => {
     })
 }));
 
+app.configure(function(){
+    app.use(function(req, res, next){
+        res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+        next();
+    });
+})
+
 app.use('/messages', new MessageService());
 app.use('/sessions', new GameSessionService());
+app.use('/sessions/random', new GameFinderService());
 app.use('/users', new UserService());
 
 app.use(express.errorHandler());
@@ -209,6 +243,9 @@ app.service('sessions').hooks({
                     throw new Error(validation.error.message)
                 }
                 const playerId = Object.keys(context.data.playersInSessionIds)[0];
+                if(playerId != null && Object.keys(app.services.sessions.games[context.id].playersInSessionIds).length >=4){
+                    throw new Error("There are too many players in this lobby!");
+                }
                 if(app.services.users.users[playerId] != null){
                     if(context.params.connectionID != undefined){
                         if(app.services.users.users[playerId].socketID != context.params.connectionID){
@@ -238,3 +275,4 @@ app.on('disconnect', function(connection){
         delete app.services.users.connectionsUserIds[connection.connectionID];
     })
 });
+
