@@ -243,8 +243,11 @@ app.service('sessions').hooks({
                     throw new Error(validation.error.message)
                 }
                 const playerId = Object.keys(context.data.playersInSessionIds)[0];
-                if(playerId != null && Object.keys(app.services.sessions.games[context.id].playersInSessionIds).length >=4){
+                console.log(Object.keys(app.services.sessions.games[context.id].playersInSessionIds).length)
+                if(app.services.sessions.games[context.id].playersInSessionIds[playerId] === undefined && context.data.playersInSessionIds[playerId] != null && Object.keys(app.services.sessions.games[context.id].playersInSessionIds).length >=4){
                     throw new Error("There are too many players in this lobby!");
+                } else if(app.services.sessions.games[context.id].playersInSessionIds[playerId] === undefined && context.data.playersInSessionIds[playerId] === null){
+                    throw new Error("You weren't in this lobby to begin with!");
                 }
                 if(app.services.users.users[playerId] != null){
                     if(context.params.connectionID != undefined){
