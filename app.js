@@ -85,6 +85,20 @@ class GameSessionService{
         this.events = ['joined', 'left']
     }
 
+    isSessionEmpty(session){
+        var players = Object.keys(session.playersInSessionIds);
+        var playerCount = players.length;
+        
+        var isEmpty = true;
+        var player;
+        for(player in players){
+            if(session.playersInSessionIds[players[player]]){
+                isEmpty = false;
+            }
+        }
+        return isEmpty;
+    }
+
     async find(){  
         if(this.publicGameIds.length < 1){
             return Promise.resolve(new NotFound("There's no public games available at this time."));
@@ -112,6 +126,7 @@ class GameSessionService{
         }
 
         this.games[game.id] = game;
+
         if(!data.linkOnly){
             this.publicGameIds.push(game.id);
         }
@@ -146,8 +161,17 @@ class GameSessionService{
                 } 
             });
         }
-        
+    
         this.games[id] = _.merge(this.games[id], data)
+
+        if(this.isSessionEmpty(this.games[id])){
+            if(this.publicGameIds.indexOf(id) != undefined){
+                this.publicGameIds.splice(this.publicGameIds.indexOf(id), 1)
+            }
+            delete this.games[id];
+            return Promise.resolve({});
+        }
+
         if(app.services.sessions.games[id].linkOnly == false && Object.keys(app.services.sessions.games[id].playersInSessionIds).length == 4)
             app.services.sessions.publicGameIds.splice(app.services.sessions.publicGameIds.indexOf(id), 1);
         return Promise.resolve(this.games[id]);
@@ -243,7 +267,6 @@ app.service('sessions').hooks({
                     throw new Error(validation.error.message)
                 }
                 const playerId = Object.keys(context.data.playersInSessionIds)[0];
-                console.log(Object.keys(app.services.sessions.games[context.id].playersInSessionIds).length)
                 if(app.services.sessions.games[context.id].playersInSessionIds[playerId] === undefined && context.data.playersInSessionIds[playerId] != null && Object.keys(app.services.sessions.games[context.id].playersInSessionIds).length >=4){
                     throw new Error("There are too many players in this lobby!");
                 } else if(app.services.sessions.games[context.id].playersInSessionIds[playerId] === undefined && context.data.playersInSessionIds[playerId] === null){
