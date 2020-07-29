@@ -53,7 +53,7 @@ class GameFinderService{
 
 class MessageService{
     constructor(){
-        this.messages = [];
+        this.messages = {};
     }
 
     async find(){
@@ -61,19 +61,17 @@ class MessageService{
     }
 
     async create(data, context){
-        if(!app.services.sessions.games[data.storyId]){
-            return new NotFound("This game doesn't exist!")
-        } else if(!data.userId in app.services.sessions.games[data.storyId].playersInSessionIds){
-            return new NotFound("User not found in game");
-        }
-
         const message = {
             id: this.messages.length,
             text: data.text.split(' ')[0],
             storyId:data.storyId,
             authorId:data.userId
         };
-        this.messages.push(message);
+        if(!this.messages[data.storyId]){
+            this.messages[data.storyId] = [message];
+        } else{
+            this.messages[data.storyId].push(message);
+        }
         return Promise.resolve(message);
     }    
 }
@@ -169,6 +167,7 @@ class GameSessionService{
                 this.publicGameIds.splice(this.publicGameIds.indexOf(id), 1)
             }
             delete this.games[id];
+            delete app.services.messages.messages[id];
             return Promise.resolve({});
         }
 
@@ -238,6 +237,12 @@ app.service('messages').hooks({
                 if(validation.error){
                     throw new Error(validation.error.message)
                 }
+
+                if(!app.services.sessions.games[context.data.storyId]){
+                    throw new NotFound("This game doesn't exist!")
+                } else if(!context.data.userId in app.services.sessions.games[context.data.storyId].playersInSessionIds){
+                    throw new NotFound("User not found in game");
+                }
             }
         ]
     }
@@ -301,4 +306,3 @@ app.on('disconnect', function(connection){
         delete app.services.users.connectionsUserIds[connection.connectionID];
     })
 });
-
