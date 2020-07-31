@@ -149,7 +149,9 @@ class GameSessionService{
             Object.keys(data.playersInSessionIds).forEach(function(key, object){
                 if(data.playersInSessionIds[key] == null){
                     app.channel(id).leave(params.connection);
-                    self.emit('left', {id:id, leftPlayer:app.services.users.users[key].name});
+                    self.emit('left', {id:id, leftPlayerName:app.services.users.users[key].name, leftPlayerId:key});
+                    delete self.games[id].playersInSessionIds[key]
+                    delete data.playersInSessionIds[key]
                 } else if(!self.games[id].playersInSessionIds[key]){
                     self.emit('joined', {id:id, newPlayer:app.services.users.users[key].name, userId:key});
                     if(params.connection != null){
