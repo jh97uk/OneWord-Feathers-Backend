@@ -9,7 +9,7 @@ const validate = {
     
     session: Joi.object({
         id: Joi.string().min(3).max(50).label('Story ID'),
-        storyTitle: Joi.string().min(2).max(120).alphanum().label('Story title'),
+        storyTitle: Joi.string().min(2).max(120).label('Story title'),
         sessionOwnerId: Joi.string().min(3).max(50).label('Session owner ID'),
         linkOnly: Joi.bool().default(false).label("Link only status"),
         playersInSessionIds: Joi.object().pattern(Joi.string(), Joi.alternatives().try(
