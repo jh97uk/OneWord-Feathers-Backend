@@ -60,6 +60,14 @@ class MessageService{
         return this.messages;
     }
 
+    async get(id, context){
+        var messages = this.messages[id]
+        if(!messages){
+            messages = [];
+        } 
+        return Promise.resolve(messages)
+    }
+
     async create(data, context){
         const message = {
             id: this.messages.length,
@@ -233,6 +241,17 @@ app.service('sessions').publish('left', function(data, context){
 
 app.service('messages').hooks({
     before:{
+        get:[
+            context=>{
+                if(!app.services.sessions.games[context.id]){
+                    throw new NotFound("This story doesn't exist!")
+                }
+                var playerId = app.services.users.connectionsUserIds[context.params.connectionID];
+                if(app.services.sessions.games[context.id].playersInSessionIds[playerId] === undefined){
+                    throw new Error("You're not in this story!");
+                }
+            }
+        ],
         create:[
             context => {
                 var validation = Schema.word.validate(context.data);
