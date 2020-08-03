@@ -32,40 +32,19 @@ app.configure(function(){
 
 app.use('/messages', new MessageService(app));
 app.services.messages.initValidators();
+app.services.messages.initEventPublishers();
 
 app.use('/sessions', new GameSessionService(app));
 app.services.sessions.initValidators();
+app.services.sessions.initEventPublishers();
 
 app.use('/users', new UserService(app));
 app.services.users.initValidators();
+app.services.users.initEventPublishers();
 
 app.use(express.errorHandler());
 
 app.listen(3030).on('listening', ()=>console.log('OneWord Backend listening'));
-
-app.service('users').publish('created', function(data, context){
-    return app.channel(context.params.connectionID).send(data);
-})
-
-app.service('messages').publish('created', function(data, context){
-    return app.channel(data.storyId).send(data);
-});
-
-app.service('sessions').publish('created', function(data, context){
-    return app.channel(data.id).send(data);
-});
-
-app.service('sessions').publish('patched', function(data, context){
-    return app.channel(data.id).send(data);
-})
-
-app.service('sessions').publish('joined', function(data, context){
-    return app.channel(data.id).send(data)
-});
-
-app.service('sessions').publish('left', function(data, context){
-    return app.channel(data.id).send(data);
-})
 
 app.on('disconnect', function(connection){
     const disconnectedUserId = app.services.users.connectionsUserIds[connection.connectionID];

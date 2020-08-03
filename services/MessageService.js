@@ -38,6 +38,13 @@ class MessageService{
         })
     }
 
+    initEventPublishers(){
+        const self = this;
+        this.app.service('messages').publish('created', function(data, context){
+            return self.app.channel(data.storyId).send(data);
+        });
+    }
+
     async find(){
         return this.messages;
     }

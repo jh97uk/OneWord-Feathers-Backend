@@ -60,6 +60,25 @@ class GameSessionService{
         })
     }
 
+    initEventPublishers(){
+        const self = this;
+        this.app.service('sessions').publish('created', function(data, context){
+            return self.app.channel(data.id).send(data);
+        });
+        
+        this.app.service('sessions').publish('patched', function(data, context){
+            return self.app.channel(data.id).send(data);
+        })
+        
+        this.app.service('sessions').publish('joined', function(data, context){
+            return self.app.channel(data.id).send(data)
+        });
+        
+        this.app.service('sessions').publish('left', function(data, context){
+            return self.app.channel(data.id).send(data);
+        })
+    }
+
     isSessionEmpty(session){
         var players = Object.keys(session.playersInSessionIds);        
         var isEmpty = true;

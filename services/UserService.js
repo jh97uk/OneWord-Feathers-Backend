@@ -22,6 +22,13 @@ class UserService{
         })
     }
 
+    initEventPublishers(){
+        const self = this;
+        this.app.service('users').publish('created', function(data, context){
+            return self.channel(context.params.connectionID).send(data);
+        })
+    }
+
     async find(){
         return this.users;
     }
