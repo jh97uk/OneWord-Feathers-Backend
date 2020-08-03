@@ -106,17 +106,10 @@ class GameSessionService{
     }
 
     async find(){  
-        if(this.publicGameIds.length < 1){
-            return Promise.resolve(new NotFound("There's no public games available at this time."));
-        } else{
-            return {id:this.publicGameIds[Math.floor(Math.random()*this.publicGameIds.length)]};
-        }
+        return {id:this.publicGameIds[Math.floor(Math.random()*this.publicGameIds.length)]};
     }
 
     async get(id, context){        
-        if(!this.games[id]){
-            return new NotFound("This game doesn't exist!")
-        }
         return Promise.resolve(this.games[id]);
     }
 
@@ -213,7 +206,7 @@ app.use('/users', new UserService());
 app.use(express.errorHandler());
 
 
-app.listen(3030).on('listening', ()=>console.log('Feathers listening'));
+app.listen(3030).on('listening', ()=>console.log('OneWord Backend listening'));
 
 app.service('users').publish('created', function(data, context){
     return app.channel(context.params.connectionID).send(data);
@@ -271,6 +264,13 @@ app.service('messages').hooks({
 
 app.service('sessions').hooks({
     before:{
+        find:[
+            context=>{
+                if(app.services.sessions.publicGameIds.length < 1){
+                    throw new NotFound("There's no public games available at this time.");
+                }
+            }
+        ],
         get:[
             context=>{
                 if(!app.services.sessions.games[context.id]){
