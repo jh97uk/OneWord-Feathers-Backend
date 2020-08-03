@@ -17,6 +17,9 @@ const validate = {
                 typing: Joi.bool()
             }).label("Player").max(1), 
             Joi.any().valid(null).label("Player"))).label('Players in session').max(1)
+    }),
+    user: Joi.object({
+        name: Joi.string().min(2).max(25).label("Name").required()
     })
 }
 
