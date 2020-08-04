@@ -1,11 +1,6 @@
-const configuration = require('@feathersjs/configuration');
 const feathers = require('@feathersjs/feathers');
 const express = require('@feathersjs/express');
 const socketio = require('@feathersjs/socketio');
-const {NotFound, GeneralError, BadRequest} = require('@feathersjs/errors');
-const {nanoid} = require('nanoid');
-const _ = require('lodash');
-const Joi = require('@hapi/joi');
 const app = express(feathers());
 
 const GameSessionService = require('./services/GameSessionService').GameSessionService;
@@ -15,6 +10,7 @@ const UserService = require('./services/UserService').UserService;
 app.use(express.json());
 app.use(express.urlencoded({extended:true}));
 app.use(express.static(__dirname));
+
 app.configure(express.rest());
 app.configure(socketio(io => {
     io.use((socket, next)=>{
@@ -22,7 +18,6 @@ app.configure(socketio(io => {
         next();
     })
 }));
-
 app.configure(function(){
     app.use(function(req, res, next){
         res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
