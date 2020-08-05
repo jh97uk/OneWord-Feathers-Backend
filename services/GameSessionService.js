@@ -16,14 +16,14 @@ class GameSessionService{
                 find:[
                     context=>{
                         if(this.app.services.sessions.publicGameIds.length < 1){
-                            throw new NotFound("There's no public games available at this time.");
+                            throw new Error("There's no public games available at this time.");
                         }
                     }
                 ],
                 get:[
                     context=>{
                         if(!this.app.services.sessions.games[context.id]){
-                            throw new NotFound("This story doesn't exist!")
+                            throw new Error("This story doesn't exist!")
                         }
                     }
                 ],
