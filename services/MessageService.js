@@ -1,4 +1,6 @@
 const Schema = require('../schema');
+const Tables = require('../Database.js').Tables;
+const {Op} = require('sequelize');
 
 class MessageService{
     constructor(app){
@@ -50,7 +52,17 @@ class MessageService{
     }
 
     async get(id, context){
-        var messages = this.messages[id]
+        var messages = []
+        await Tables.Words.findAll({
+            where: {
+                storyId:{
+                    [Op.eq]:id
+                }
+            },
+            raw:true
+        }).then(function(successData){
+            messages = successData;
+        })
         if(!messages){
             messages = [];
         } 
@@ -69,6 +81,12 @@ class MessageService{
         } else{
             this.messages[data.storyId].push(message);
         }
+        const word = await Tables.Words.create({
+            text:message.text,
+            storyId: message.storyId,
+            userId: message.authorId
+        });
+        console.log(word.id);
         return Promise.resolve(message);
     }    
 }
