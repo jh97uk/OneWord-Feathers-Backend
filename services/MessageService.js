@@ -69,12 +69,22 @@ class MessageService{
         return Promise.resolve(messages)
     }
 
+    async deleteWordsForStory(id){
+        delete this.messages[id];
+        await Tables.Words.destroy({
+            where:{
+                storyId:id
+            }
+        });
+    }
+
     async create(data, context){
         const message = {
             id: this.messages.length,
             text: data.text.split(' ')[0],
             storyId:data.storyId,
-            authorId:data.userId
+            authorId:data.userId,
+            playerIndex:this.app.services.sessions.getPlayerIndex(data.storyId, data.userId)
         };
         if(!this.messages[data.storyId]){
             this.messages[data.storyId] = [message];
@@ -84,9 +94,10 @@ class MessageService{
         const word = await Tables.Words.create({
             text:message.text,
             storyId: message.storyId,
-            userId: message.authorId
+            authorId: message.authorId,
+            playerIndex: message.playerIndex
         });
-        console.log(word.id);
+        console.log(word);
         return Promise.resolve(message);
     }    
 }

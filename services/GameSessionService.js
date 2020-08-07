@@ -99,6 +99,10 @@ class GameSessionService{
         return Promise.resolve(this.games[id]);
     }
 
+    getPlayerIndex(gameId, playerId){
+        return Object.keys(this.games[gameId].playersInSessionIds).indexOf(playerId);
+    }
+
     async create(data, context){
         this.playersInSessionIds = {};
 
@@ -121,6 +125,14 @@ class GameSessionService{
         }
 
         return Promise.resolve(game);
+    }
+
+    deleteSession(id){
+        if(this.publicGameIds.indexOf(id) != undefined){
+            this.publicGameIds.splice(this.publicGameIds.indexOf(id), 1)
+        }
+        delete this.games[id];
+        this.app.services.messages.deleteWordsForStory(id);
     }
 
     async patch(id, data, params){
@@ -146,11 +158,7 @@ class GameSessionService{
         this.games[id] = _.merge(this.games[id], data)
 
         if(this.isSessionEmpty(this.games[id])){
-            if(this.publicGameIds.indexOf(id) != undefined){
-                this.publicGameIds.splice(this.publicGameIds.indexOf(id), 1)
-            }
-            delete this.games[id];
-            delete this.app.services.messages.messages[id];
+            this.deleteSession(id);
             return Promise.resolve({});
         }
 

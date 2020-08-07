@@ -20,8 +20,12 @@ const Tables = {
             type: Sequelize.STRING(50),
             allowNull:false
         },
-        userId:{
+        authorId:{
             type: Sequelize.STRING(50),
+            allowNull:false
+        },
+        playerIndex:{
+            type: Sequelize.INTEGER,
             allowNull:false
         }
     }, {
