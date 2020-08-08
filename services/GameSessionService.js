@@ -8,6 +8,8 @@ class GameSessionService{
         this.publicGameIds = [];
         this.events = ['joined', 'left']
         this.app = app;
+
+        this.colorIds = [1, 2, 3, 4];
     }
 
     initValidators(){
@@ -99,18 +101,19 @@ class GameSessionService{
         return Promise.resolve(this.games[id]);
     }
 
-    getPlayerIndex(gameId, playerId){
-        return Object.keys(this.games[gameId].playersInSessionIds).indexOf(playerId);
+    getPlayerColorIndex(gameId, playerId){
+        return this.games[gameId].playersInSessionIds[playerId].colorId;
     }
 
     async create(data, context){
         this.playersInSessionIds = {};
-
+        this.availablePlayerColors = [0, 1, 2, 3];
         const game = {
             id:nanoid(10),
             name:data.storyTitle,
             sessionOwnerId:this.playersInSessionIds[0],
             linkOnly:data.linkOnly,
+            availablePlayerColors:this.availablePlayerColors,
             playersInSessionIds:this.playersInSessionIds
         }
 
@@ -135,6 +138,19 @@ class GameSessionService{
         this.app.services.messages.deleteWordsForStory(id);
     }
 
+    retrieveNextAvailablePlayerColor(sessionId){
+        const session = this.games[sessionId];
+        const colorId = session.availablePlayerColors[0]; 
+        session.availablePlayerColors.splice(0, 1);
+        return colorId;
+    }
+
+    restorePlayerColor(sessionId, playerId){
+        const session = this.games[sessionId];
+        const colorId = session.playersInSessionIds[playerId].colorId;
+        session.availablePlayerColors.unshift(colorId);
+    }
+
     async patch(id, data, params){
         const self = this;
         
@@ -142,11 +158,13 @@ class GameSessionService{
             Object.keys(data.playersInSessionIds).forEach(function(key, object){
                 if(data.playersInSessionIds[key] == null){
                     self.app.channel(id).leave(params.connection);
+                    self.restorePlayerColor(id, key);
                     self.emit('left', {id:id, leftPlayerName:self.app.services.users.users[key].name, leftPlayerId:key});
                     delete self.games[id].playersInSessionIds[key]
                     delete data.playersInSessionIds[key]
                 } else if(!self.games[id].playersInSessionIds[key]){
                     self.emit('joined', {id:id, newPlayer:self.app.services.users.users[key].name, userId:key});
+                    data.playersInSessionIds[key]['colorId'] = self.retrieveNextAvailablePlayerColor(id);
                     if(params.connection != null){
                         self.app.channel(id).join(params.connection);
                         self.app.services.users.users[key].currentGame = id;

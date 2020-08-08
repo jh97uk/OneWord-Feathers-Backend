@@ -84,7 +84,7 @@ class MessageService{
             text: data.text.split(' ')[0],
             storyId:data.storyId,
             authorId:data.userId,
-            playerIndex:this.app.services.sessions.getPlayerIndex(data.storyId, data.userId)
+            playerColorIndex:this.app.services.sessions.getPlayerColorIndex(data.storyId, data.userId)
         };
         if(!this.messages[data.storyId]){
             this.messages[data.storyId] = [message];
@@ -95,9 +95,8 @@ class MessageService{
             text:message.text,
             storyId: message.storyId,
             authorId: message.authorId,
-            playerIndex: message.playerIndex
+            playerColorIndex: message.playerColorIndex
         });
-        console.log(word);
         return Promise.resolve(message);
     }    
 }

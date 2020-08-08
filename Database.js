@@ -24,7 +24,7 @@ const Tables = {
             type: Sequelize.STRING(50),
             allowNull:false
         },
-        playerIndex:{
+        playerColorIndex:{
             type: Sequelize.INTEGER,
             allowNull:false
         }
