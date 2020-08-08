@@ -97,6 +97,7 @@ class MessageService{
             authorId: message.authorId,
             playerColorIndex: message.playerColorIndex
         });
+        console.log(word);
         return Promise.resolve(message);
     }    
 }
