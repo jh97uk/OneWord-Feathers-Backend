@@ -13,11 +13,12 @@ class MessageService{
             before:{
                 get:[
                     context=>{
-                        if(!this.app.services.sessions.games[context.id]){
+                        const session = this.app.services.sessions.games[context.id]
+                        if(!session){
                             throw new NotFound("This story doesn't exist!")
                         }
-                        var playerId = this.app.services.users.connectionsUserIds[context.params.connectionID];
-                        if(this.app.services.sessions.games[context.id].playersInSessionIds[playerId] === undefined){
+                        const playerId = this.app.services.users.connectionsUserIds[context.params.connectionID];
+                        if(session.playersInSessionIds[playerId] === undefined){
                             throw new Error("You're not in this story!");
                         }
                     }
@@ -28,10 +29,10 @@ class MessageService{
                         if(validation.error){
                             throw new Error(validation.error.message)
                         }
-        
-                        if(!this.app.services.sessions.games[context.data.storyId]){
+                        const session = this.app.services.sessions.games[context.data.storyId];
+                        if(!session){
                             throw new NotFound("This game doesn't exist!")
-                        } else if(!context.data.userId in this.app.services.sessions.games[context.data.storyId].playersInSessionIds){
+                        } else if(!context.data.userId in session.playersInSessionIds){
                             throw new NotFound("User not found in game");
                         }
                     }
@@ -97,7 +98,6 @@ class MessageService{
             authorId: message.authorId,
             playerColorIndex: message.playerColorIndex
         });
-        console.log(word);
         return Promise.resolve(message);
     }    
 }
