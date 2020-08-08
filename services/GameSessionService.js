@@ -44,14 +44,18 @@ class GameSessionService{
                             throw new Error(validation.error.message)
                         }
                         const playerId = Object.keys(context.data.playersInSessionIds)[0];
-                        if(this.app.services.sessions.games[context.id].playersInSessionIds[playerId] === undefined && context.data.playersInSessionIds[playerId] != null && Object.keys(this.app.services.sessions.games[context.id].playersInSessionIds).length >=4){
+                        const session = this.app.services.sessions.games[context.id];
+                        const patchData = context.data;
+                        if(session.playersInSessionIds[playerId] === undefined && patchData.playersInSessionIds[playerId] != null && Object.keys(session.playersInSessionIds).length >=4){
                             throw new Error("There are too many players in this lobby!");
-                        } else if(this.app.services.sessions.games[context.id].playersInSessionIds[playerId] === undefined && context.data.playersInSessionIds[playerId] === null){
+                        } else if(session.playersInSessionIds[playerId] === undefined && patchData.playersInSessionIds[playerId] === null){
                             throw new Error("You weren't in this lobby to begin with!");
                         }
-                        if(this.app.services.users.users[playerId] != null){
-                            if(context.params.connectionID != undefined){
-                                if(this.app.services.users.users[playerId].socketID != context.params.connectionID){
+                        const player = this.app.services.users.users[playerId]
+                        if(player != null){
+                            const connectionId = context.params.connectionID;
+                            if(connectionId != undefined){
+                                if(player.socketID != connectionId){
                                     throw new Error("You are not that user!");
                                 }
                             }
@@ -151,38 +155,46 @@ class GameSessionService{
         session.availablePlayerColors.unshift(colorId);
     }
 
-    async patch(id, data, params){
+    leavePlayer(sessionId, playerId, connection, patchData){
+        this.app.channel(sessionId).leave(connection);
+        this.restorePlayerColor(sessionId, playerId);
+        this.emit('left', {id:sessionId, leftPlayerName:this.app.services.users.users[playerId].name, leftPlayerId:playerId});
+        delete this.games[sessionId].playersInSessionIds[playerId]
+        delete patchData.playersInSessionIds[playerId]
+    }
+
+    joinPlayer(sessionId, playerId, connection, patchData){
+        this.emit('joined', {id:sessionId, newPlayer:this.app.services.users.users[playerId].name, userId:playerId});
+        patchData.playersInSessionIds[playerId]['colorId'] = this.retrieveNextAvailablePlayerColor(sessionId);
+        if(connection != null){
+            this.app.channel(sessionId).join(connection);
+            this.app.services.users.users[playerId].currentGame = sessionId;
+        }
+    }
+
+    async patch(sessionId, data, params){
         const self = this;
         
         if(data.playersInSessionIds){
-            Object.keys(data.playersInSessionIds).forEach(function(key, object){
-                if(data.playersInSessionIds[key] == null){
-                    self.app.channel(id).leave(params.connection);
-                    self.restorePlayerColor(id, key);
-                    self.emit('left', {id:id, leftPlayerName:self.app.services.users.users[key].name, leftPlayerId:key});
-                    delete self.games[id].playersInSessionIds[key]
-                    delete data.playersInSessionIds[key]
-                } else if(!self.games[id].playersInSessionIds[key]){
-                    self.emit('joined', {id:id, newPlayer:self.app.services.users.users[key].name, userId:key});
-                    data.playersInSessionIds[key]['colorId'] = self.retrieveNextAvailablePlayerColor(id);
-                    if(params.connection != null){
-                        self.app.channel(id).join(params.connection);
-                        self.app.services.users.users[key].currentGame = id;
-                    }
+            Object.keys(data.playersInSessionIds).forEach(function(playerId, object){
+                if(data.playersInSessionIds[playerId] == null){
+                    self.leavePlayer(sessionId, playerId, params.connection, data);
+                } else if(!self.games[sessionId].playersInSessionIds[playerId]){
+                    self.joinPlayer(sessionId, playerId, params.connection, data);
                 } 
             });
         }
     
-        this.games[id] = _.merge(this.games[id], data)
+        this.games[sessionId] = _.merge(this.games[sessionId], data)
 
-        if(this.isSessionEmpty(this.games[id])){
-            this.deleteSession(id);
+        if(this.isSessionEmpty(this.games[sessionId])){
+            this.deleteSession(sessionId);
             return Promise.resolve({});
         }
 
-        if(this.app.services.sessions.games[id].linkOnly == false && Object.keys(this.app.services.sessions.games[id].playersInSessionIds).length == 4)
-            this.app.services.sessions.publicGameIds.splice(this.app.services.sessions.publicGameIds.indexOf(id), 1);
-        return Promise.resolve(this.games[id]);
+        if(this.games[sessionId].linkOnly == false && Object.keys(this.games[sessionId].playersInSessionIds).length == 4)
+            this.publicGameIds.splice(this.publicGameIds.indexOf(sessionId), 1);
+        return Promise.resolve(this.games[sessionId]);
     }
 }
 
