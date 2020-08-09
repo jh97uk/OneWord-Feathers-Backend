@@ -180,6 +180,9 @@ class GameSessionService{
             Object.keys(data.playersInSessionIds).forEach(function(playerId, object){
                 if(data.playersInSessionIds[playerId] == null){
                     self.leavePlayer(sessionId, playerId, params.connection, data);
+                    if(self.publicGameIds.indexOf(sessionId) == -1)
+                        self.publicGameIds.push(sessionId);
+
                 } else if(!self.games[sessionId].playersInSessionIds[playerId]){
                     self.joinPlayer(sessionId, playerId, params.connection, data);
                 } 
