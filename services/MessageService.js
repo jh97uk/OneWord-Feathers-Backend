@@ -17,7 +17,7 @@ class MessageService{
                         if(!session){
                             throw new NotFound("This story doesn't exist!")
                         }
-                        const playerId = this.app.services.users.connectionsUserIds[context.params.connectionID];
+                        const playerId = this.app.services.users.getUserByConnectionId(context.params.connectionID);
                         if(session.playersInSessionIds[playerId] === undefined){
                             throw new Error("You're not in this story!");
                         }

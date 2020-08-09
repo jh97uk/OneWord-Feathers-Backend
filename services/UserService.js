@@ -22,6 +22,14 @@ class UserService{
         })
     }
 
+    getUserByConnectionId(connectionId){
+        return this.connectionsUserIds[connectionId];
+    }
+
+    setUserCurrentGame(userId, gameId){
+        this.users[userId].currentGame = gameId;
+    }
+
     initEventPublishers(){
         const self = this;
         this.app.service('users').publish('created', function(data, context){

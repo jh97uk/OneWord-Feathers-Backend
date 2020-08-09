@@ -164,11 +164,12 @@ class GameSessionService{
     }
 
     joinPlayer(sessionId, playerId, connection, patchData){
-        this.emit('joined', {id:sessionId, newPlayer:this.app.services.users.users[playerId].name, userId:playerId});
+        const users = this.app.services.users;
+        this.emit('joined', {id:sessionId, newPlayer:users.users[playerId].name, userId:playerId});
         patchData.playersInSessionIds[playerId]['colorId'] = this.retrieveNextAvailablePlayerColor(sessionId);
         if(connection != null){
             this.app.channel(sessionId).join(connection);
-            this.app.services.users.users[playerId].currentGame = sessionId;
+            this.app.services.users.setUserCurrentGame(playerId, sessionId);
         }
     }
 
