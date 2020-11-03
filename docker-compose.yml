@@ -1,0 +1,14 @@
+# Use postgres/example user/password credentials
+version: '3.1'
+
+services:
+
+  db:
+    image: postgres
+    container_name: "oneword-postgres"
+    restart: always
+    ports:
+      - "54321:5432"
+    environment:
+      POSTGRES_USER: oneword
+      POSTGRES_PASSWORD: oneword

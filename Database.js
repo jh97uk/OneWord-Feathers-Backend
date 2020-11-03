@@ -1,9 +1,6 @@
 const {Sequelize} = require('sequelize');
 
-const sequelize = new Sequelize({
-    dialect:'sqlite',
-    storage: './database.sqlite'
-});
+const sequelize = new Sequelize('postgres://oneword:oneword@localhost:54321/oneword');
 
 const Tables = {
     Words:sequelize.define('Words', {
